@@ -1,1 +1,35 @@
 # Chat-with-PDF-using-RAG
+from bs4 import BeautifulSoup
+import requests
+from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain.embeddings.openai import OpenAIEmbeddings
+from langchain.vectorstores import FAISS
+url = "https://example.com"
+response = requests.get(url)
+soup = BeautifulSoup(response.text, "html.parser")
+text_content = soup.get_text()
+text_splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=50)
+texts = text_splitter.split_text(text_content)
+embedding_model = OpenAIEmbeddings()  # Replace with SentenceTransformers if local
+vector_store = FAISS.from_texts(texts, embedding_model)
+vector_store.save_local("faiss_index")
+
+// Code for Query Handling //
+
+from langchain.embeddings.openai import OpenAIEmbeddings
+from langchain.vectorstores import FAISS
+embedding_model = OpenAIEmbeddings()
+vector_store = FAISS.load_local("faiss_index", embedding_model)
+query = "What are the main services offered on the website?"
+results = vector_store.similarity_search(query, k=3)
+for i, result in enumerate(results):
+    print(f"Chunk {i+1}:", result.page_content)
+
+// Code for Generating Response //
+
+from langchain.chains import RetrievalQA
+from langchain.llms import OpenAI
+llm = OpenAI(model="gpt-4")
+qa_chain = RetrievalQA.from_chain_type(llm, retriever=vector_store.as_retriever())
+response = qa_chain.run(query)
+print("Response:", response)
